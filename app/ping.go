@@ -15,7 +15,7 @@ func HandlePing(c net.Conn) {
 		var firstChar string
 		for scanner.Scan() {
 			text := scanner.Text()
-			// fmt.Println(text)
+			fmt.Println(text)
 			words = append(words, text)
 			if idx == 0 {
 				firstChar = text
