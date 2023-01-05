@@ -17,12 +17,13 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
+	store := NewStore()
 	for {
 		c, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go HandlePing(c)
+		go HandlePing1(c, store)
 	}
 }
