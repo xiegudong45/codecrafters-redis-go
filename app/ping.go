@@ -1,52 +1,65 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"strings"
 )
+
+// func HandlePing(c net.Conn, store *Store) {
+// 	defer c.Close()
+
+// 	for {
+// 		scanner := bufio.NewScanner(c)
+// 		var words []string
+// 		idx := 0
+// 		var firstChar string
+// 		for scanner.Scan() {
+// 			text := scanner.Text()
+// 			fmt.Println(text)
+// 			words = append(words, text)
+// 			if idx == 0 {
+// 				firstChar = text
+// 			}
+// 			if firstChar == "*1" && idx == 2 {
+// 				c.Write([]byte("+PONG\r\n"))
+// 				break
+// 			} else if firstChar == "*2" && idx == 4 {
+// 				res := fmt.Sprintf("%s\r\n%s\r\n", words[len(words)-2], words[len(words)-1])
+// 				c.Write([]byte(res))
+// 				break
+// 			} else if firstChar == "*3" {
+// 				// store[]
+// 				c.Write([]byte("OK"))
+// 				break
+// 			}
+// 			idx++
+// 		}
+// 	}
+// }
 
 func HandlePing(c net.Conn, store *Store) {
 	defer c.Close()
 
 	for {
-		scanner := bufio.NewScanner(c)
-		var words []string
-		idx := 0
-		var firstChar string
-		for scanner.Scan() {
-			text := scanner.Text()
-			fmt.Println(text)
-			words = append(words, text)
-			if idx == 0 {
-				firstChar = text
+		buf := make([]byte, 1024)
+		len, err := c.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				os.Exit(1)
 			}
-			if firstChar == "*1" && idx == 2 {
-				c.Write([]byte("+PONG\r\n"))
-				break
-			} else if firstChar == "*2" && idx == 4 {
-				res := fmt.Sprintf("%s\r\n%s\r\n", words[len(words)-2], words[len(words)-1])
-				c.Write([]byte(res))
-				break
-			} else if firstChar == "*3" {
-				// store[]
-				c.Write([]byte("OK"))
-				break
-			}
-			idx++
 		}
-	}
-}
-
-func HandlePing1(c net.Conn, store *Store) {
-	defer c.Close()
-	buf := make([]byte, 1024)
-	for {
-		len, _ := c.Read(buf)
-		command := string(buf[:len])
+		size := 1024
+		if len < size {
+			size = len
+		}
+		command := string(buf[:size])
 		wordsList := strings.Split(command, "\r\n")
-		fmt.Println(wordsList)
+		// fmt.Println(wordsList)
 		if wordsList[0] == "*1" && strings.ToUpper(wordsList[2]) == "PING" {
 			c.Write([]byte("+PONG\r\n"))
 			break
