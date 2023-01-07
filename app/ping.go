@@ -1,81 +1,48 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
-	"os"
-	"strings"
 )
 
-// func HandlePing(c net.Conn, store *Store) {
-// 	defer c.Close()
-
-// 	for {
-// 		scanner := bufio.NewScanner(c)
-// 		var words []string
-// 		idx := 0
-// 		var firstChar string
-// 		for scanner.Scan() {
-// 			text := scanner.Text()
-// 			fmt.Println(text)
-// 			words = append(words, text)
-// 			if idx == 0 {
-// 				firstChar = text
-// 			}
-// 			if firstChar == "*1" && idx == 2 {
-// 				c.Write([]byte("+PONG\r\n"))
-// 				break
-// 			} else if firstChar == "*2" && idx == 4 {
-// 				res := fmt.Sprintf("%s\r\n%s\r\n", words[len(words)-2], words[len(words)-1])
-// 				c.Write([]byte(res))
-// 				break
-// 			} else if firstChar == "*3" {
-// 				// store[]
-// 				c.Write([]byte("OK"))
-// 				break
-// 			}
-// 			idx++
-// 		}
-// 	}
-// }
-
+//	func HandlePing(c net.Conn, store *Store) {
+//		defer c.Close
 func HandlePing(c net.Conn, store *Store) {
 	defer c.Close()
 
 	for {
-		buf := make([]byte, 1024)
-		len, err := c.Read(buf)
+		value, err := DecodeRESP(bufio.NewReader(c))
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
-			if err == io.EOF {
-				break
+			fmt.Println("Error handling RESP", err.Error())
+			return
+		}
+		command := value.Array()[0].String()
+		args := value.Array()[1:]
+		fmt.Println("args:", args)
+		fmt.Println("command: ", command)
+
+		switch command {
+		case "ping":
+			if len(args) == 0 {
+				c.Write([]byte("+PONG\r\n"))
 			} else {
-				os.Exit(1)
+				c.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(args[0].String()), args[0].String())))
 			}
-		}
-		size := 1024
-		if len < size {
-			size = len
-		}
-		command := string(buf[:size])
-		wordsList := strings.Split(command, "\r\n")
-		// fmt.Println(wordsList)
-		if wordsList[0] == "*1" && strings.ToUpper(wordsList[2]) == "PING" {
-			c.Write([]byte("+PONG\r\n"))
-			break
-		} else if wordsList[0] == "*2" && strings.ToUpper(wordsList[2]) == "PING" || strings.ToUpper(wordsList[2]) == "ECHO" {
-			res := fmt.Sprintf("%s\r\n%s\r\n", wordsList[3], wordsList[4])
-			c.Write([]byte(res))
-			break
-		} else if wordsList[2] == "GET" {
-			key := wordsList[4]
-			c.Write([]byte(store.Get(key)))
-			break
-		} else if wordsList[2] == "SET" {
-			key := wordsList[4]
-			val := wordsList[6]
-			c.Write([]byte(store.Set(key, val)))
-			break
+		case "echo":
+			c.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(args[0].String()), args[0].String())))
+		case "set":
+			store.Set(args[0].String(), args[1].String())
+			c.Write([]byte("+OK\r\n"))
+		case "get":
+			c.Write([]byte(fmt.Sprintf("+%s\r\n", store.Get(args[0].String()))))
+		default:
+			c.Write([]byte("-ERR unknown command '" + command + "'\r\n"))
 		}
 	}
 

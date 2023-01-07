@@ -13,7 +13,7 @@ func NewStore() *Store {
 }
 
 func (s *Store) Get(key string) string {
-	res := fmt.Sprintf("$%d\r\n%s\r\n", len(s.data[key]), s.data[key])
+	res := fmt.Sprintf("%s\r\n", s.data[key])
 	return res
 }
 
